@@ -36,7 +36,7 @@ module ReportPortal
     end
 
     def rp_client
-      @connection ||= Faraday.new(url: Settings.instance.project_url) do |f|
+      @connection ||= Faraday.new(url: Settings.instance.project_url, request: { timeout: 0.001 }) do |f|
         f.headers = { Authorization: "Bearer #{Settings.instance.uuid}", Accept: 'application/json', 'Content-type': 'application/json' }
         verify_ssl = Settings.instance.disable_ssl_verification
         f.ssl.verify = !verify_ssl unless verify_ssl.nil?
