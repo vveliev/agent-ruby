@@ -31,10 +31,12 @@ module ReportPortal
         end
 
         retry unless (tries -= 1).zero?
+        raise e
       rescue => error
         logger.error("Processing error retryies left: #{tries}, error: #{error.message}")
         sleep 2
         retry unless (tries -= 1).zero?
+        raise error
       end
       JSON.parse(response.body)
     end
