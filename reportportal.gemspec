@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.license                = 'Apache-2.0'
 
   s.add_dependency('net-http-persistent', '~> 3.0')
-  s.add_runtime_dependency('faraday', '~> 0.15')
+  s.add_runtime_dependency('faraday', '~> 1.0.1')
   s.add_runtime_dependency('parallel_tests', '~> 2.15')
   s.add_runtime_dependency('rubytree', '~> 1.0')
   s.add_runtime_dependency('sys-proctable', '1.1.5')

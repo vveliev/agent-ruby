@@ -8,7 +8,7 @@ module ReportPortal
     end
 
     def process_request(path, method, *options)
-      tries = 2
+      tries = 5
       begin
         response = rp_client.send(method, path, *options)
       rescue Faraday::ClientError => e
@@ -30,6 +30,10 @@ module ReportPortal
           ReportPortal.last_used_time = data['start_time']
         end
 
+        retry unless (tries -= 1).zero?
+      rescue => error
+        logger.error("Processing error retryies left: #{tries}, error: #{error.message}")
+        sleep 2
         retry unless (tries -= 1).zero?
       end
       JSON.parse(response.body)
