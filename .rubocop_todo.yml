@@ -19,7 +19,7 @@ Metrics/BlockLength:
 # Offense count: 1
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
-  Max: 169
+  Max: 350
 
 # Offense count: 2
 Metrics/CyclomaticComplexity:
@@ -28,7 +28,12 @@ Metrics/CyclomaticComplexity:
 # Offense count: 16
 # Configuration parameters: CountComments, ExcludedMethods.
 Metrics/MethodLength:
-  Max: 33
+  Max: 79
+
+# Offense count: 1
+# Configuration parameters: CountComments.
+Metrics/ModuleLength:
+  Max: 250
 
 # Offense count: 4
 Metrics/PerceivedComplexity:
@@ -40,8 +45,6 @@ Style/Documentation:
     - 'spec/**/*'
     - 'test/**/*'
     - 'lib/report_portal/cucumber/formatter.rb'
-    - 'lib/report_portal/cucumber/parallel_formatter.rb'
-    - 'lib/report_portal/cucumber/parallel_report.rb'
     - 'lib/report_portal/logging/logger.rb'
     - 'lib/report_portal/rspec/formatter.rb'
     - 'lib/report_portal/settings.rb'
@@ -71,7 +74,6 @@ Style/GlobalVars:
 # Configuration parameters: MinBodyLength.
 Style/GuardClause:
   Exclude:
-    - 'lib/report_portal/cucumber/parallel_report.rb'
     - 'lib/report_portal/cucumber/report.rb'
     - 'lib/report_portal/rspec/formatter.rb'
     - 'lib/reportportal.rb'

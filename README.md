@@ -28,12 +28,18 @@ Add `gem 'reportportal', git: 'https://github.com/reportportal/agent-ruby.git'` 
 
 * With Cucumber:
 
-```cucumber <other options> -f ReportPortal::Cucumber::Formatter```
+```cucumber <other options> -f ReportPortal::Cucumber::Formatter -o '<log_file>'```
 
-* With Cucumber and parallel_tests gem:
+* With Cucumber (Advanced)
 
-```parallel_cucumber <some options> -o '<some other options> -f ReportPortal::Cucumber::ParallelFormatter'```
-
+```ruby
+AfterConfiguration do |config|
+  ...
+  #rp_log_file = <Generated or from ENV>
+  ...
+  config.formats.push(["ReportPortal::Cucumber::Formatter", {}, rp_log_file])
+end 
+```
 * With RSpec:
 
 ```rspec <other options> -f ReportPortal::RSpec::Formatter```
@@ -54,6 +60,8 @@ Supported settings:
  - launch_id - id of previously created launch (to be used if formatter_modes contains attach_to_launch)
  - file_with_launch_id - path to file with id of launch (to be used if formatter_modes contains attach_to_launch)
  - disable_ssl_verification - set to true to disable SSL verification on connect to ReportPortal (potential security hole!). Set `disable_ssl_verification` to `true` if you see the following error:
+ - launch_uuid - when formatter_modes contains `attach_to_launch`, launch_uuid will be used to create uniq report group (tmp dir should be shared across all launches)
+ - log_level - this is log level for report_portal agent (useful for troubleshooting issues when run in parallel mode)
 ```
 Request to https://rp.epam.com/reportportal-ws/api/v1/pass-team/launch//finish produced an exception: RestClient::SSLCertificateNotVerified: SSL_connect returned=1 errno=0 state=SSLv3 read server certificate B: certificate verify failed
 ```
@@ -77,12 +85,36 @@ WebMock.disable_net_connect!(:net_http_connect_on_start => true, :allow_localhos
 
 The following modes are supported:
 
-| Name | Purpose |
-| --- | --- |
-| attach_to_launch | Do not create a new launch but add executing features/scenarios to an existing launch. Use launch_id or file_with_launch_id settings to configure that. If they are not present client will check rp_launch_id.tmp in `Dir.tmpdir`)
-| use_same_thread_for_reporting | Send reporting commands in the same main thread used for running tests. This mode is useful for debugging this Report Portal client. It changes default behavior to send commands in the separate thread. Default behavior is there not to slow test execution. |
-| skip_reporting_hierarchy | Do not create items for folders and feature files |
-| use_persistent_connection | Use persistent connection to connect to the server |
+<table><thead><tr><th>Name</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr>
+<td>attach_to_launch</td>
+<td>
+Add executing features/scenarios to same launch. 
+Use following options are available to configure that. 
+
+    1. launch_id
+    2. file_with_launch_id 
+    3. launch_uuid
+    4. rp_launch_id_for_<first process pid>.lock in `Dir.tmpdir` 
+    
+    *** If launch is not created, cucumber process will create one. Such that user does not need to worry about creating new launch.
+</td>
+</tr>
+<tr>
+<td>use_same_thread_for_reporting</td>
+<td>
+Send reporting commands in the same main thread used for running tests. This mode is useful for debugging 
+Report Portal client. It changes default behavior to send commands in the separate thread.
+Default behavior is there not to slow test execution. </td>
+</tr>
+<tr>
+<td>skip_reporting_hierarchy</td>
+<td>
+Do not create items for folders and feature files</td>
+</tr>
+</tbody>
+</table>
 
 ## Logging
 Experimental support for three common logging frameworks was added:
@@ -92,12 +124,6 @@ Experimental support for three common logging frameworks was added:
 - [Log4r](https://rubygems.org/gems/log4r)
 
 To use Logger, set use_standard_logger parameter to true (see Configuration chapter). For the other two corresponding appenders/outputters are available under reportportal/logging.
-
-## Parallel formatter
-
-ReportPortal::Cucumber::ParallelFormatter can be used for tests started via parallel_tests gem.
-
-Note: Launch id is shared between independent processes (as is the case with parallel_tests gem) via a file in `Dir.tmpdir`.
 
 ## Links
 

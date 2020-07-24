@@ -1,3 +1,3 @@
 module ReportPortal
-  VERSION = '0.7'.freeze
+  VERSION = '0.8'
 end
