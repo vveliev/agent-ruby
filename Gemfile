@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'cucumber', '~> 3'
-gem 'faraday'
+gem 'http'
 gem 'log4r'
 gem 'logging'
 gem 'parallel_tests', '~> 2.15.0'

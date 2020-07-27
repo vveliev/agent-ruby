@@ -1,6 +1,5 @@
 require 'base64'
 require 'cgi'
-require 'http'
 require 'json'
 require 'uri'
 require 'pathname'
@@ -19,7 +18,7 @@ module ReportPortal
 
     def initialize(logger)
       @logger = logger
-      @client = ReportPortal::Client.new(logger)
+      @client = ReportPortal::HttpClient.new(logger)
     end
 
     def now
