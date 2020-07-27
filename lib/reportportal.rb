@@ -7,10 +7,10 @@ require 'tempfile'
 require 'uri'
 
 require_relative 'report_portal/event_bus'
-require_relative 'report_portal/models/item_search_options'	
+require_relative 'report_portal/models/item_search_options'
 require_relative 'report_portal/models/test_item'
 require_relative 'report_portal/settings'
-require_relative 'report_portal/http_client'
+require_relative 'report_portal/http_client'  
 
 module ReportPortal
   LOG_LEVELS = { error: 'ERROR', warn: 'WARN', info: 'INFO', debug: 'DEBUG', trace: 'TRACE', fatal: 'FATAL', unknown: 'UNKNOWN' }.freeze
@@ -95,7 +95,7 @@ module ReportPortal
       @logger.debug "send_log: [#{status}],[#{message}], #{@current_scenario} "
       unless @current_scenario.nil? || @current_scenario.closed # it can be nil if scenario outline in expand mode is executed
         data = { item_id: @current_scenario.id, time: time, level: status_to_level(status), message: message.to_s }
-        send_request(:post, "log", json: data)
+        send_request(:post, 'log', json: data)
       end
     end
 
@@ -119,12 +119,12 @@ module ReportPortal
     end
 
     def get_item(name, parent_node)
-      if parent_node.is_root? # folder without parent folder
-        url = "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{URI.escape(name)}&filter.size.path=0"
-      else
-        url = "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
-      end
-      send_request(:get, url)
+      path =  if parent_node.is_root? # folder without parent folder
+                "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{URI.escape(name)}&filter.size.path=0"
+              else
+                "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
+              end
+      send_request(:get, path)
     end
 
     def remote_item(item_id)
@@ -142,14 +142,14 @@ module ReportPortal
 
     def close_child_items(parent_id)
       logger.debug "closing child items: #{parent_id} "
-      if parent_id.nil?
-        url = "item?filter.eq.launch=#{@launch_id}&filter.size.path=0&page.page=1&page.size=100"
-      else
-        url = "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_id}&page.page=1&page.size=100"
-      end
+      path =  if parent_id.nil?
+                "item?filter.eq.launch=#{@launch_id}&filter.size.path=0&page.page=1&page.size=100"
+              else
+                "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_id}&page.page=1&page.size=100"
+              end
       ids = []
       loop do
-        response = send_request(:get, url)
+        response = send_request(:get, path)
         if response.key?('links')
           link = response['links'].find { |i| i['rel'] == 'next' }
           url = link.nil? ? nil : link['href']
@@ -170,7 +170,7 @@ module ReportPortal
 
 
     # Registers an event. The proc will be called back with the event object.
-     def on_event(name, &proc)
+    def on_event(name, &proc)
       event_bus.on(name, &proc)
     end
 
@@ -194,7 +194,7 @@ module ReportPortal
 
     def http_client
       @http_client ||= ReportPortal::HttpClient.new(logger)
-    end	
+    end
 
     def current_time
       # `now_without_mock_time` is provided by Timecop and returns a real, not mocked time
