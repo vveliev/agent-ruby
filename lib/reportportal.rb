@@ -1,18 +1,19 @@
 require 'base64'
 require 'cgi'
 require 'json'
-require 'uri'
+require 'mime/types'
 require 'pathname'
 require 'tempfile'
-require 'faraday'
+require 'uri'
 
-require_relative 'report_portal/patches/faraday'
+require_relative 'report_portal/event_bus'
+require_relative 'report_portal/models/item_search_options'	
+require_relative 'report_portal/models/test_item'
 require_relative 'report_portal/settings'
-require_relative 'report_portal/client'
+require_relative 'report_portal/http_client'
 
 module ReportPortal
-  TestItem = Struct.new(:name, :type, :id, :start_time, :description, :closed, :tags)
-  LOG_LEVELS = { error: 'ERROR', warn: 'WARN', info: 'INFO', debug: 'DEBUG', trace: 'TRACE', fatal: 'FATAL', unknown: 'UNKNOWN' }
+  LOG_LEVELS = { error: 'ERROR', warn: 'WARN', info: 'INFO', debug: 'DEBUG', trace: 'TRACE', fatal: 'FATAL', unknown: 'UNKNOWN' }.freeze
   class << self
     attr_accessor :launch_id, :current_scenario, :last_used_time, :logger
 
@@ -174,6 +175,41 @@ module ReportPortal
         close_child_items(id)
         finish_item(TestItem.new(id: id))
       end
+    end
+
+
+    # Registers an event. The proc will be called back with the event object.	
+    def on_event(name, &proc)	
+      event_bus.on(name, &proc)	
+    end	
+
+    private	
+
+    def send_file_from_path(status, path, label, time)	
+      File.open(File.realpath(path), 'rb') do |file|	
+        filename = File.basename(file)	
+        json = [{ level: status_to_level(status), message: label || filename, item_id: @current_scenario.id, time: time, file: { name: filename } }]	
+        form = {	
+          json_request_part: HTTP::FormData::Part.new(JSON.dump(json), content_type: 'application/json'),	
+          binary_part: HTTP::FormData::File.new(file, filename: filename)	
+        }	
+        send_request(:post, 'log', form: form)	
+      end	
+    end	
+
+    def http_client	
+      @http_client ||= HttpClient.new	
+    end	
+
+    def current_time	
+      # `now_without_mock_time` is provided by Timecop and returns a real, not mocked time	
+      return Time.now_without_mock_time if Time.respond_to?(:now_without_mock_time)	
+
+      Time.now	
+    end	
+
+    def event_bus	
+      @event_bus ||= EventBus.new	
     end
   end
 end
