@@ -19,7 +19,6 @@ module ReportPortal
 
     def initialize(logger)
       @logger = logger
-      @client = ReportPortal::HttpClient.new(logger)
     end
 
     def now
@@ -41,30 +40,30 @@ module ReportPortal
 
     def start_launch(description, start_time = now)
       data = { name: Settings.instance.launch, start_time: start_time, tags: Settings.instance.tags, description: description, mode: Settings.instance.launch_mode }
-      @launch_id = @client.process_request('launch', :post, data.to_json)['id']
+      @launch_id = send_request(:post, 'launch', json: data)['id']
     end
 
     def remote_launch
-      @client.process_request("launch/#{@launch_id}", :get)
+      send_request(:get, "launch/#{@launch_id}")
     end
 
     def update_launch(data)
-      @client.process_request("launch/#{@launch_id}/update", :put, data.to_json)
+      send_request(:put, "launch/#{@launch_id}/update", json: data)
     end
 
     def finish_launch(end_time = now)
       logger.debug "finish_launch: [#{end_time}]"
       data = { end_time: end_time }
-      @client.process_request("launch/#{@launch_id}/finish", :put, data.to_json)
+      send_request(:put, "launch/#{@launch_id}/finish", json: data)
     end
 
     def start_item(item_node)
       item = item_node.content
       data = { start_time: item.start_time, name: item.name[0, 255], type: item.type.to_s, launch_id: @launch_id, description: item.description }
       data[:tags] = item.tags unless item.tags.empty?
-      url = 'item'
-      url += "/#{item_node.parent.content.id}" unless item_node.parent && item_node.parent.is_root?
-      @client.process_request(url, :post, data.to_json)['id']
+      path = 'item'
+      path += "/#{item_node.parent.content.id}" unless item_node.parent && item_node.parent.is_root?
+      send_request(:post, path, json: data)['id']
     end
 
     def finish_item(item, status = nil, end_time = nil, force_issue = nil)
@@ -80,7 +79,7 @@ module ReportPortal
         end
         logger.debug "finish_item:id[#{item}], data: #{data} "
         begin
-          response = @client.process_request("item/#{item.id}", :put, data.to_json)
+          send_request(:put, "item/#{item.id}", json: data)
           logger.debug "finish_item: response [#{response}] "
         rescue RestClient::Exception => e
           response = JSON.parse(e.response)
@@ -96,12 +95,15 @@ module ReportPortal
       @logger.debug "send_log: [#{status}],[#{message}], #{@current_scenario} "
       unless @current_scenario.nil? || @current_scenario.closed # it can be nil if scenario outline in expand mode is executed
         data = { item_id: @current_scenario.id, time: time, level: status_to_level(status), message: message.to_s }
-        @client.process_request('log', :post, data.to_json)
+        send_request(:post, "log", json: data)
       end
     end
 
-    def send_file(status, path, label = nil, time = now, mime_type = 'image/png')
-      unless File.file?(path)
+    def send_file(status, path_or_src, label = nil, time = now, mime_type = 'image/png')
+      str_without_nils = path_or_src.to_s.gsub("\0", '') # file? does not allow NULLs inside the string
+      if File.file?(str_without_nils)
+        send_file_from_path(status, path_or_src, label, time)
+      else
         if mime_type =~ /;base64$/
           mime_type = mime_type[0..-8]
           path_or_src = Base64.decode64(path_or_src)
@@ -114,17 +116,6 @@ module ReportPortal
           send_file_from_path(status, tempfile.path, label, time)
         end
       end
-      file_name = File.basename(path)
-      label ||= file_name
-      json = { level: status_to_level(status),
-               message: label,
-               item_id: @current_scenario.id,
-               time: time,
-               file: { name: file_name.to_s },
-               "Content-Type": 'application/json' }
-      payload = { 'json_request_part': [json].to_json,
-                  file_name => Faraday::UploadIO.new(path, mime_type) }
-      @client.process_request('log', :post, payload, content_type: 'multipart/form-data')
     end
 
     def get_item(name, parent_node)
@@ -133,11 +124,11 @@ module ReportPortal
       else
         url = "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
       end
-      @client.process_request(url, :get)
+      send_request(:get, url)
     end
 
     def remote_item(item_id)
-      @client.process_request("item/#{item_id}", :get)
+      send_request(:get, "item/#{item_id}")
     end
 
     def item_id_of(name, parent_node)
@@ -158,7 +149,7 @@ module ReportPortal
       end
       ids = []
       loop do
-        response = @client.process_request(url, :get)
+        response = send_request(:get, url)
         if response.key?('links')
           link = response['links'].find { |i| i['rel'] == 'next' }
           url = link.nil? ? nil : link['href']
@@ -197,19 +188,23 @@ module ReportPortal
       end	
     end	
 
-    def http_client	
-      @http_client ||= HttpClient.new	
+    def send_request(verb, path, options = {})
+      http_client.send_request(verb, path, options)
+    end
+
+    def http_client
+      @http_client ||= ReportPortal::HttpClient.new(logger)
     end	
 
-    def current_time	
-      # `now_without_mock_time` is provided by Timecop and returns a real, not mocked time	
-      return Time.now_without_mock_time if Time.respond_to?(:now_without_mock_time)	
+    def current_time
+      # `now_without_mock_time` is provided by Timecop and returns a real, not mocked time
+      return Time.now_without_mock_time if Time.respond_to?(:now_without_mock_time)
 
-      Time.now	
-    end	
+      Time.now
+    end
 
-    def event_bus	
-      @event_bus ||= EventBus.new	
+    def event_bus
+      @event_bus ||= EventBus.new
     end
   end
 end
