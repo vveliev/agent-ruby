@@ -169,24 +169,24 @@ module ReportPortal
     end
 
 
-    # Registers an event. The proc will be called back with the event object.	
-    def on_event(name, &proc)	
-      event_bus.on(name, &proc)	
-    end	
+    # Registers an event. The proc will be called back with the event object.
+     def on_event(name, &proc)
+      event_bus.on(name, &proc)
+    end
 
-    private	
+    private
 
-    def send_file_from_path(status, path, label, time)	
-      File.open(File.realpath(path), 'rb') do |file|	
-        filename = File.basename(file)	
-        json = [{ level: status_to_level(status), message: label || filename, item_id: @current_scenario.id, time: time, file: { name: filename } }]	
-        form = {	
-          json_request_part: HTTP::FormData::Part.new(JSON.dump(json), content_type: 'application/json'),	
-          binary_part: HTTP::FormData::File.new(file, filename: filename)	
-        }	
-        send_request(:post, 'log', form: form)	
-      end	
-    end	
+    def send_file_from_path(status, path, label, time)
+      File.open(File.realpath(path), 'rb') do |file|
+        filename = File.basename(file)
+        json = [{ level: status_to_level(status), message: label || filename, item_id: @current_scenario.id, time: time, file: { name: filename } }]
+        form = {
+          json_request_part: HTTP::FormData::Part.new(JSON.dump(json), content_type: 'application/json'),
+          binary_part: HTTP::FormData::File.new(file, filename: filename)
+        }
+        send_request(:post, 'log', form: form)
+      end
+    end
 
     def send_request(verb, path, options = {})
       http_client.send_request(verb, path, options)
