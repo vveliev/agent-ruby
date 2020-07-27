@@ -120,9 +120,9 @@ module ReportPortal
 
     def get_item(name, parent_node)
       path = if parent_node.is_root? # folder without parent folder
-        "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{URI.escape(name)}&filter.size.path=0"
+        "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{CGI.escape(name)}&filter.size.path=0"
       else
-        "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
+        "item?filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{CGI.escape(name)}"
       end
       send_request(:get, path)
     end
