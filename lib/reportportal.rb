@@ -119,16 +119,39 @@ module ReportPortal
     end
 
     def get_item(name, parent_node)
-      path =  if parent_node.is_root? # folder without parent folder
-                "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{URI.escape(name)}&filter.size.path=0"
-              else
-                "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
-              end
+      path = if parent_node.is_root? # folder without parent folder
+        "item?filter.eq.launch=#{@launch_id}&filter.eq.name=#{URI.escape(name)}&filter.size.path=0"
+      else
+        "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_node.content.id}&filter.eq.name=#{URI.escape(name)}"
+      end
       send_request(:get, path)
+    end
+
+    # @option options [Hash] options, see ReportPortal::ItemSearchOptions
+    def get_items(filter_options = {})
+      page_size = 100
+      max_pages = 100
+      all_items = []
+      1.step.each do |page_number|
+        raise 'Too many pages with the results were returned' if page_number > max_pages
+
+        options = ItemSearchOptions.new({ page_size: page_size, page_number: page_number }.merge(filter_options))
+        page_items = send_request(:get, 'item', params: options.query_params)['content'].map do |item_params|
+          TestItem.new(item_params)
+        end
+        all_items += page_items
+        break if page_items.size < page_size
+      end
+      all_items
     end
 
     def remote_item(item_id)
       send_request(:get, "item/#{item_id}")
+    end
+
+    # @param item_ids [Array<String>] an array of items to remove (represented by ids)
+    def delete_items(item_ids)
+      send_request(:delete, 'item', params: { ids: item_ids })
     end
 
     def item_id_of(name, parent_node)
@@ -142,11 +165,11 @@ module ReportPortal
 
     def close_child_items(parent_id)
       logger.debug "closing child items: #{parent_id} "
-      path =  if parent_id.nil?
-                "item?filter.eq.launch=#{@launch_id}&filter.size.path=0&page.page=1&page.size=100"
-              else
-                "item?filter.eq.launch=#{@launch_id}&filter.eq.parent=#{parent_id}&page.page=1&page.size=100"
-              end
+      path = if parent_id.nil?
+        "item?filter.eq.launch=#{@launch_id}&filter.size.path=0&page.page=1&page.size=100"
+      else
+        "item?filter.eq.parent=#{parent_id}&page.page=1&page.size=100"
+      end
       ids = []
       loop do
         response = send_request(:get, path)
@@ -167,7 +190,6 @@ module ReportPortal
         finish_item(TestItem.new(id: id))
       end
     end
-
 
     # Registers an event. The proc will be called back with the event object.
     def on_event(name, &proc)
